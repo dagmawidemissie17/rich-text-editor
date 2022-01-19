@@ -1,30 +1,27 @@
 // Import React dependencies.
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from 'react';
 // Import the Slate editor factory.
-import { createEditor } from "slate";
+import { createEditor, Text } from 'slate';
 // Import the Slate components and React plugin.
-import { Slate, Editable, withReact } from "slate-react";
-import { withHistory } from "slate-history";
-import CustomEditor from "./EditorLogic";
-import { DefaultElement, CodeElement, Link } from "./Element";
-import Leaf from "./Leaf";
-import Toolbar from "./Toolbar";
-import withLinks from "./plugin/withLinks";
+import { Slate, Editable, withReact } from 'slate-react';
+import { withHistory } from 'slate-history';
+import escapeHtml from 'escape-html';
+import { CodeElement, DefaultElement } from './Elements';
+import Leaf from './Leaf';
+import CustomEditor from './EditorLogic';
+import Toolbar from './Toolbar';
 
-const RichTextEditor = () => {
-  // withHistory tracks editor history, use Ctrl + Z for undo, Ctrl + Y for redo
-  const editor = useMemo(
-    () => withLinks(withHistory(withReact(createEditor()))),
-    []
-  );
+// Even though slateValue is not used in this component, it's used by Antd Form to keep track of custom component's value. So please keep and don't delete
+const RichTextEditor = ({ slateValue = '', onChange, handleSlate }) => {
+  const editor = useMemo(() => withHistory(withReact(createEditor())), []);
   // Add the initial value when setting up our state.
   const [value, setValue] = useState([
     {
-      type: "paragraph",
-      children: [{ text: "A line of text in a paragraph." }],
+      type: 'paragraph',
+      children: [{ text: 'A line of text in a paragraph.' }],
     },
     {
-      type: "paragraph",
+      type: 'paragraph',
       children: [
         {
           text:
@@ -34,14 +31,62 @@ const RichTextEditor = () => {
     },
   ]);
 
+  const triggerChange = (changedValue) => {
+    onChange(changedValue.toString());
+  };
+
+  // TODO: refine serialize function
+  const serialize = (node) => {
+    let nodeText = escapeHtml(node.text);
+    if (Text.isText(node)) {
+      if (node.bold) {
+        nodeText = `<strong>` + nodeText + `</strong>`;
+      }
+
+      if (node.italic) {
+        nodeText = `<em>` + nodeText + `</em>`;
+      }
+
+      if (node.underline) {
+        nodeText = `<u>` + nodeText + `</u>`;
+      }
+
+      if (node.highlight) {
+        nodeText = `<mark>` + nodeText + `</mark>`;
+      }
+
+      if (node.strikethrough) {
+        nodeText = `<del>` + nodeText + `</del>`;
+      }
+
+      return nodeText;
+    }
+
+    if (Array.isArray(node)) {
+      return node.map((subNode) => serializeSubNode(subNode)).join('');
+    }
+
+    return serializeSubNode(node);
+  };
+
+  const serializeSubNode = (node) => {
+    const children = node.children.map((n) => serialize(n)).join('');
+    switch (node.type) {
+      case 'link':
+        return `<a href="${escapeHtml(node.url)}">${children}</a>`;
+      case 'code':
+        return `<pre><code>${children}</code></pre>`;
+      default:
+        return `<p>${children}</p>`;
+    }
+  };
+
   // Define a rendering function based on the element passed to `props`. We use
   // `useCallback` here to memoize the function for subsequent renders.
   const renderElement = useCallback((props) => {
     switch (props.element.type) {
-      case "code":
+      case 'code':
         return <CodeElement {...props} />;
-      case "link":
-        return <Link {...props} />;
       default:
         return <DefaultElement {...props} />;
     }
@@ -55,41 +100,53 @@ const RichTextEditor = () => {
   return (
     <>
       <Toolbar editor={editor} />
-      <Slate
-        editor={editor}
-        value={value}
-        onChange={(newValue) => {
-          console.log(newValue);
-          setValue(newValue);
+
+      <div
+        style={{
+          border: '1px solid gray',
+          padding: '0.5em',
+          borderRadius: '8px',
+          marginTop: '0.25em',
         }}
       >
-        <Editable
-          renderElement={renderElement}
-          renderLeaf={renderLeaf}
-          onKeyDown={(event) => {
-            if (!event.ctrlKey) {
-              return;
-            }
-
-            // eslint-disable-next-line default-case
-            switch (event.key) {
-              // When "`" is pressed, keep our existing code block logic.
-              case "`": {
-                event.preventDefault();
-                CustomEditor.toggleCodeBlock(editor);
-                break;
-              }
-
-              // When "B" is pressed, bold the text in the selection.
-              case "b": {
-                event.preventDefault();
-                CustomEditor.toggleBoldMark(editor);
-                break;
-              }
-            }
+        <Slate
+          editor={editor}
+          value={value}
+          onChange={(newValue) => {
+            setValue(newValue);
+            const content = serialize(newValue);
+            triggerChange(content);
+            // handleSlate(content);
           }}
-        />
-      </Slate>
+        >
+          <Editable
+            renderElement={renderElement}
+            renderLeaf={renderLeaf}
+            onKeyDown={(event) => {
+              if (!event.ctrlKey) {
+                return;
+              }
+
+              // eslint-disable-next-line default-case
+              switch (event.key) {
+                // When "`" is pressed, keep our existing code block logic.
+                case '`': {
+                  event.preventDefault();
+                  CustomEditor.toggleCodeBlock(editor);
+                  break;
+                }
+
+                // When "B" is pressed, bold the text in the selection.
+                case 'b': {
+                  event.preventDefault();
+                  CustomEditor.toggleBoldMark(editor);
+                  break;
+                }
+              }
+            }}
+          />
+        </Slate>
+      </div>
     </>
   );
 };

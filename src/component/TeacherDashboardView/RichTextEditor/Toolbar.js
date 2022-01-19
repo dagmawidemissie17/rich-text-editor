@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   BoldOutlined,
   ItalicOutlined,
@@ -8,17 +8,11 @@ import {
   CodeOutlined,
   UndoOutlined,
   RedoOutlined,
-  LinkOutlined,
-} from "@ant-design/icons";
-import { Button, Tooltip } from "antd";
-import CustomEditor from "./EditorLogic";
+} from '@ant-design/icons';
+import { Button, Tooltip } from 'antd';
+import CustomEditor from './EditorLogic';
 
 const Toolbar = ({ editor }) => {
-  const handleInsertLink = (editor) => {
-    const userInput = prompt("Enter a URL"); // prompt the user for a link
-    CustomEditor.insertLink(editor, userInput);
-  };
-
   return (
     <>
       <Tooltip title="Bold">
@@ -95,23 +89,6 @@ const Toolbar = ({ editor }) => {
           }}
         />
       </Tooltip>
-      <Tooltip title="HyperLink">
-        <Button
-          icon={<LinkOutlined />}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            handleInsertLink(editor);
-          }}
-        />
-      </Tooltip>
-      {/* <Button
-        onMouseDown={(event) => {
-          event.preventDefault();
-          CustomEditor.removeLink(editor);
-        }}
-      >
-        Remove Link
-      </Button> */}
     </>
   );
 };
